@@ -1,6 +1,7 @@
 import ast
 import builtins
 import json
+import symtable
 import warnings
 from pathlib import Path
 
@@ -18,33 +19,40 @@ def test_config_and_launch_bat():
     assert "Main.py" not in launch_bat
 
 
-def test_g_py_compiles_without_syntax_warnings_or_undefined_names():
+def test_g_py_compiles_without_syntax_warnings_or_undefined_globals():
     source = (REPO_DIR / "G.py").read_text(encoding="utf-8")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", SyntaxWarning)
         tree = ast.parse(source, filename="G.py")
     assert [w for w in caught if issubclass(w.category, SyntaxWarning)] == []
 
-    defined = set(dir(builtins)) | {"__file__"}
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            defined.add(node.name)
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                defined.add((alias.asname or alias.name).split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                defined.add(alias.asname or alias.name)
-        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            defined.add(node.id)
-        elif isinstance(node, ast.arg):
-            defined.add(node.arg)
-        elif isinstance(node, ast.ExceptHandler) and node.name:
-            defined.add(node.name)
+    top = symtable.symtable(source, "G.py", "exec")
+    builtin_names = set(dir(builtins)) | {"__file__", "__name__"}
+    module_defined = {
+        s.get_name()
+        for s in top.get_symbols()
+        if s.is_assigned() or s.is_imported() or s.is_namespace()
+    }
 
     undefined = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-            if node.id not in defined:
-                undefined.append((node.lineno, node.id))
-    assert undefined == [], f"Undefined names: {undefined}"
+
+    def walk(table):
+        for s in table.get_symbols():
+            name = s.get_name()
+            if s.is_global() and not s.is_assigned() and not s.is_imported():
+                if name not in module_defined and name not in builtin_names:
+                    undefined.append((table.get_name(), table.get_lineno(), name))
+        for child in table.get_children():
+            walk(child)
+
+    walk(top)
+    assert undefined == [], f"Undefined globals in lexical scopes: {undefined}"
+
+    # Verify no top-level function overwrites the module-level `token` config string
+    top_func_names = [
+        node.name
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    assert "token" not in top_func_names
+

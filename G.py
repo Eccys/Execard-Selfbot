@@ -23,14 +23,19 @@ from PIL import Image
 import pyPrivnote as pn
 from gtts import gTTS
 
-ctypes.windll.kernel32.SetConsoleTitleW(f'Execard v{SELFBOT.__version__} | Loading...')
+from pathlib import Path
 
-with open('config.json') as f:
+if hasattr(ctypes, 'windll'):
+    ctypes.windll.kernel32.SetConsoleTitleW(f'Execard v{SELFBOT.__version__} | Loading...')
+
+_CONFIG_PATH = Path(__file__).resolve().parent / 'config.json'
+with open(_CONFIG_PATH, encoding='utf-8') as f:
     config = json.load(f)
 
 token = config.get('token')
 password = config.get('password')
 prefix = config.get('prefix')
+cycling = False
 
 giveaway_sniper = config.get('giveaway_sniper')
 slotbot_sniper = config.get('slotbot_sniper')
@@ -1162,7 +1167,7 @@ async def cum(ctx):
              :trumpet:      :eggplant:    
              ''')
     await asyncio.sleep(0.5)
-    await message.edit(contnet='''
+    await message.edit(content='''
                        :ok_hand:            :weary:
    :eggplant: :zzz: :necktie: :eggplant: 
                    :oil:     :nose:
@@ -1260,6 +1265,7 @@ async def pingweb(ctx, website=None):
             r = requests.get(website).status_code
         except Exception as e:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{e}" + Fore.RESET)
+            return
         if r == 404:
             await ctx.send(f'Website is down ({r})', delete_after=3)
         else:
@@ -1686,20 +1692,22 @@ async def Pornhub(ctx, word1=None, word2=None):
     except:
         await ctx.send(endpoint)
 
-@Execard.command()
-async def token(ctx, user: discord.User = None):
+@Execard.command(name='token')
+async def _token_cmd(ctx, user: discord.User = None):
     await ctx.message.delete()
-    list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
-            "V", "W", "X", "Y", "Z", "_"'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'ñ', 'o',
-            'p', 'q', 'r', 's', 't', 'u',
-            'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-    token = random.choices(list, k=59)
-    print(token)
+    chars = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
+        "V", "W", "X", "Y", "Z", "_", 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'ñ', 'o',
+        'p', 'q', 'r', 's', 't', 'u',
+        'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+    ]
+    fake_token = random.choices(chars, k=59)
+    print(fake_token)
     if user is None:
         user = ctx.author
-        await ctx.send(user.mention + "'s token is " + ''.join(token))
+        await ctx.send(user.mention + "'s token is " + ''.join(fake_token))
     else:
-        await ctx.send(user.mention + "'s token is " + "".join(token))
+        await ctx.send(user.mention + "'s token is " + "".join(fake_token))
 
 
 @Execard.command()
@@ -1932,7 +1940,7 @@ async def ignorefriends(ctx):
     await ctx.message.delete()
     for relationship in Execard.user.relationships:
         if relationship is discord.RelationshipType.incoming_request:
-            relationship.delete()
+            await relationship.delete()
 
 
 @Execard.command()
@@ -2146,8 +2154,6 @@ async def weather(ctx, *, city): # b'\xfc'
                 ''')    
         except KeyError:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{city} Is not a real city"+Fore.RESET)
-        else:
-            print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{req.text}"+Fore.RESET)
 
 @Execard.command(aliases=['shorteen'])
 async def bitly(ctx, *, link): # b'\xfc'
@@ -2166,8 +2172,6 @@ async def bitly(ctx, *, link): # b'\xfc'
             await ctx.send(embed=em)
         except Exception as e:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{e}"+Fore.RESET)
-        else:
-            print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{req.text}"+Fore.RESET)
 
 @Execard.command()
 async def cuttly(ctx, *, link): # b'\xfc'
@@ -2187,8 +2191,6 @@ async def cuttly(ctx, *, link): # b'\xfc'
                 await ctx.send(new)    
         except Exception as e:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{e}"+Fore.RESET)
-        else:
-            print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{req.text}"+Fore.RESET)
 
 @Execard.command() 
 async def cat(ctx): # b'\xfc'
@@ -2207,8 +2209,6 @@ async def cat(ctx): # b'\xfc'
                 await ctx.send(str(r[0]["url"]))
         except Exception as e:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{e}"+Fore.RESET)
-        else:
-            print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{req.text}"+Fore.RESET)
 
 @Execard.command()
 async def dog(ctx): # b'\xfc'
@@ -2304,7 +2304,7 @@ async def roleinfo(ctx, *, role: discord.Role): # b'\xfc'
     if str(role.colour) == "#000000":
         colour = "default"
         color = ("#%06x" % random.randint(0, 0xFFFFFF))
-        color = int(colour[1:], 16)
+        color = int(color[1:], 16)
     else:
         colour = str(role.colour).upper()
         color = role.colour
@@ -2394,7 +2394,7 @@ async def devowel(ctx, *, text): # b'\xfc'
 @Execard.command()
 async def blank(ctx): # b'\xfc'
     await ctx.message.delete()
-    if config.get('password') == 'password-here':
+    if not config.get('password') or config.get('password').lower() == 'password-here':
         print(f"{Fore.RED}[ERROR] {Fore.YELLOW}You didnt put your password in the config.json file"+Fore.RESET)
     else:  
         password = config.get('password')
@@ -2423,7 +2423,7 @@ async def cumslut(ctx):
 @Execard.command(aliases=['pfpget', 'stealpfp'])
 async def pfpsteal(ctx, user: discord.User): # b'\xfc'
     await ctx.message.delete()
-    if config.get('password') == 'password-here':
+    if not config.get('password') or config.get('password').lower() == 'password-here':
         print(f"{Fore.RED}[ERROR] {Fore.YELLOW}You didnt put your password in the config.json file"+Fore.RESET)
     else:
         password = config.get('password')
@@ -2443,7 +2443,7 @@ async def pfpsteal(ctx, user: discord.User): # b'\xfc'
 @Execard.command(name='set-pfp', aliases=['setpfp', 'pfpset'])
 async def _set_pfp(ctx, *, url): # b'\xfc'
     await ctx.message.delete()
-    if config.get('password') == 'password-here':
+    if not config.get('password') or config.get('password').lower() == 'password-here':
         print(f"{Fore.RED}[ERROR] {Fore.YELLOW}You didnt put your password in the config.json file"+Fore.RESET)
     else:
         password = config.get('password')
@@ -2453,11 +2453,11 @@ async def _set_pfp(ctx, *, url): # b'\xfc'
               if not block:
                   break
               f.write(block)
-    try:
-        Image.open('Images/Avatars/PFP-1.png'   ).convert('RGB')
-        with open('Images/Avatars/PFP-1.png', 'rb') as f:
-            await Execard.user.edit(password=password, avatar=f.read())
-    except discord.HTTPException as e:
+        try:
+            Image.open('Images/Avatars/PFP-1.png').convert('RGB')
+            with open('Images/Avatars/PFP-1.png', 'rb') as f:
+                await Execard.user.edit(password=password, avatar=f.read())
+        except discord.HTTPException as e:
             print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}{e}"+Fore.RESET)
 
 @Execard.command(aliases=['dong', 'penis'])
@@ -2502,6 +2502,8 @@ async def hypesquad(ctx, house): # b'\xfc'
     elif house == "random":
         houses = [1, 2, 3]
         payload = {'house_id': random.choice(houses)}
+    else:
+        return
     try:
         request.post('https://discordapp.com/api/v6/hypesquad/online', headers=headers, json=payload, timeout=10)
     except Exception as e:
@@ -2606,10 +2608,6 @@ async def masslogin(ctx, choice = None): # b'\xfc'
 @Execard.command()
 async def masscon(ctx, _type, amount: int, *, name=None): # b'\xfc'
     await ctx.message.delete()
-    payload = {
-        'name': name,
-        'visibility': 1 
-    }
     headers = {
         'Authorization': token,
         'Content-Type':'application/json', 
@@ -2621,12 +2619,17 @@ async def masscon(ctx, _type, amount: int, *, name=None): # b'\xfc'
     ]
     if name is None:
         name = 'about:blank'
-    elif _type not in avaliable:
+    if _type not in avaliable:
         print(f'Avaliable connections: {avaliable}')
+        return
+    payload = {
+        'name': name,
+        'visibility': 1 
+    }
     for _i in range(amount):
         try:
             ID = random.randint(10000000, 90000000)
-            time.sleep(5) 
+            await asyncio.sleep(5) 
             r = requests.put(f'https://canary.discordapp.com/api/v6/users/@me/connections/{_type}/{ID}', data=json.dumps(payload), headers=headers)
             if r.status_code == 200:
                 print(f"[{Fore.GREEN}+{Fore.RESET}] New connection added!")
@@ -2645,6 +2648,11 @@ async def fakenet(ctx, _type, *, name = None): # b'\xfc'
         'skype',
         'leagueoflegends'
     ]
+    if name is None:
+        name = 'about:blank'
+    if _type not in avaliable:
+        await ctx.send(f'Avaliable connections: `{avaliable}`', delete_after = 0.1)
+        return
     payload = {
         'name': name,
         'visibility': 1
@@ -2653,13 +2661,9 @@ async def fakenet(ctx, _type, *, name = None): # b'\xfc'
         'Authorization': token,
         'Content-Type':'application/json', 
     }
-    if name is None:
-        name = 'about:blank'
-    elif _type not in avaliable:
-        await ctx.send(f'Avaliable connections: `{avaliable}`', delete_after = 0.1)
     r = requests.put(f'https://canary.discordapp.com/api/v6/users/@me/connections/{_type}/{ID}', data=json.dumps(payload), headers=headers)
     if r.status_code == 200:            
-        await ctx.send(f"Added connection: `{type}` with Username: `{name}` and ID: `{ID}`", delete_after = 0.1)
+        await ctx.send(f"Added connection: `{_type}` with Username: `{name}` and ID: `{ID}`", delete_after = 0.1)
     else:
         await ctx.send('Some error has happened with the endpoint', delete_after = 0.1)
 
@@ -2674,20 +2678,21 @@ async def tokeninfo(ctx, _token): # b'\xfc'
         res = requests.get('https://canary.discordapp.com/api/v6/users/@me', headers=headers)
         res = res.json()
         user_id = res['id']
-        locale = res['locale']
-        avatar_id = res['avatar']
-        language = languages.get(locale)
+        locale = res.get('locale') or ''
+        avatar_id = res.get('avatar')
+        language = languages.get(locale, '')
         creation_date = datetime.datetime.utcfromtimestamp(((int(user_id) >> 22) + 1420070400000) / 1000).strftime('%d-%m-%Y %H:%M:%S UTC') 
     except KeyError:
         print(f"{Fore.RED}[ERROR]: {Fore.YELLOW}Invalid token"+Fore.RESET)
+        return
     em = discord.Embed(
-        description=f"Name: `{res['username']}#{res['discriminator']}`\nID: `{res['id']}`\nEmail: `{res['email']}`\nCreation Date: `{creation_date}`\nProfile picture: [**Click here**](https://cdn.discordapp.com/avatars/{user_id}/{avatar_id})")
+        description=f"Name: `{res.get('username')}#{res.get('discriminator')}`\nID: `{res['id']}`\nEmail: `{res.get('email')}`\nCreation Date: `{creation_date}`\nProfile picture: [**Click here**](https://cdn.discordapp.com/avatars/{user_id}/{avatar_id})")
     fields = [
-        {'name': 'Phone', 'value': res['phone']},
-        {'name': 'Flags', 'value': res['flags']},
-        {'name': 'Local language', 'value': res['locale'] + f"{language}"},
-        {'name': 'MFA?', 'value': res['mfa_enabled']},
-        {'name': 'Verified?', 'value': res['verified']},
+        {'name': 'Phone', 'value': res.get('phone')},
+        {'name': 'Flags', 'value': res.get('flags')},
+        {'name': 'Local language', 'value': f"{locale}{language}"},
+        {'name': 'MFA?', 'value': res.get('mfa_enabled')},
+        {'name': 'Verified?', 'value': res.get('verified')},
     ]
     for field in fields:
         if field['value']:
@@ -3297,42 +3302,42 @@ async def kiss(ctx, user: discord.User): # b'\xfc'
 @Execard.command(aliases=['proxy'])
 async def proxies(ctx): # b'\xfc'
     await ctx.message.delete()
-    file = open("Data/Http-proxies.txt", "a+")
-    res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=1500')
-    proxies = []
-    for proxy in res.text.split('\n'):
-        proxy = proxy.strip()
-        if proxy:
-            proxies.append(proxy)
-    for p in proxies:
-        file.write((p)+"\n")
-    file = open("Data/Https-proxies.txt", "a+")
-    res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=https&timeout=1500')
-    proxies = []
-    for proxy in res.text.split('\n'):
-        proxy = proxy.strip()
-        if proxy:
-             proxies.append(proxy)
-    for p in proxies:
-        file.write((p)+"\n")
-    file = open("Data/Socks4-proxies.txt", "a+")
-    res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=socks4&timeout=1500')
-    proxies = []
-    for proxy in res.text.split('\n'):
-        proxy = proxy.strip()
-        if proxy:
-            proxies.append(proxy)
-    for p in proxies:
-        file.write((p)+"\n")
-    file = open("Data/Socks5-proxies.txt", "a+")
-    res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=socks5&timeout=1500')
-    proxies = []
-    for proxy in res.text.split('\n'):
-        proxy = proxy.strip()
-        if proxy:
-            proxies.append(proxy)
-    for p in proxies:
-        file.write((p)+"\n")
+    with open("Data/Http-proxies.txt", "a+", encoding="utf-8") as file:
+        res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=1500')
+        proxies = []
+        for proxy in res.text.split('\n'):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append(proxy)
+        for p in proxies:
+            file.write((p)+"\n")
+    with open("Data/Https-proxies.txt", "a+", encoding="utf-8") as file:
+        res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=https&timeout=1500')
+        proxies = []
+        for proxy in res.text.split('\n'):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append(proxy)
+        for p in proxies:
+            file.write((p)+"\n")
+    with open("Data/Socks4-proxies.txt", "a+", encoding="utf-8") as file:
+        res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=socks4&timeout=1500')
+        proxies = []
+        for proxy in res.text.split('\n'):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append(proxy)
+        for p in proxies:
+            file.write((p)+"\n")
+    with open("Data/Socks5-proxies.txt", "a+", encoding="utf-8") as file:
+        res = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=socks5&timeout=1500')
+        proxies = []
+        for proxy in res.text.split('\n'):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append(proxy)
+        for p in proxies:
+            file.write((p)+"\n")
 
 @Execard.command()
 async def uptime(ctx): # b'\xfc'
@@ -3350,7 +3355,7 @@ async def purge(ctx, amount: int): # b'\xfc'
         except:
             pass
 
-@Execard.command(name='group-leaver', aliase=['leaveallgroups', 'leavegroup', 'leavegroups'])
+@Execard.command(name='group-leaver', aliases=['leaveallgroups', 'leavegroup', 'leavegroups'])
 async def _group_leaver(ctx): # b'\xfc'
     await ctx.message.delete()
     for channel in Execard.private_channels:
