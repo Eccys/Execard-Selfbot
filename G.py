@@ -45,8 +45,12 @@ cat_key = config.get('cat_key')
 weather_key = config.get('weather_key')
 cuttly_key = config.get('cuttly_key')
 
-width = os.get_terminal_size().columns
-hwid = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+import shutil
+width = shutil.get_terminal_size((80, 24)).columns
+try:
+    hwid = subprocess.check_output('wmic csproduct get uuid', stderr=subprocess.DEVNULL).decode(errors='replace').split('\n')[1].strip()
+except Exception:
+    hwid = "unknown"
 start_time = datetime.datetime.utcnow()
 loop = asyncio.get_event_loop()
 
@@ -162,7 +166,7 @@ def Clear():
 Clear()
 
 def Init():
-    if config.get('token') == "token-here":
+    if not config.get('token') or str(config.get('token')).lower() == "token-here":
         Clear()
         print(f"{Fore.RED}[ERROR] {Fore.YELLOW}You didnt put your token in the config.json file"+Fore.RESET)
     else:
@@ -181,18 +185,16 @@ def GmailBomber():
     password = input('Gmail Password: ')
     try:
         _smpt.login(username, password)
-    except:
+    except Exception:
         print(f"{Fore.RED}[ERROR]: {Fore.YELLOW} Incorrect Password or gmail, make sure you've enabled less-secure apps access"+Fore.RESET)
+        return
     target = input('Target Gmail: ')
     message = input('Message to send: ')
-    counter = eval(input('Ammount of times: '))
+    counter = int(input('Ammount of times: '))
     count = 0
     while count < counter:
-        count = 0
         _smpt.sendmail(username, target, message)
         count += 1
-    if count == counter:
-        pass
 
 def GenAddress(addy: str):
     letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -228,21 +230,25 @@ def GenAddress(addy: str):
             addy = addy.replace("Ln.", "Lane")
         elif "lane" in addy.lower():
             addy = addy.replace("lane", "Ln.")
-            addy = addy.replace("lane", "Ln.")
+            addy = addy.replace("Lane", "Ln.")
     random_number = random.randint(1,99)
     extra_list = ["Apartment", "Unit", "Room"]
     random_extra = random.choice(extra_list)
     return four_char + " " + addy + " " + random_extra + " " + str(random_number)
 
 def BotTokens():
-    with open('Data/Tokens/bot-tokens.txt', 'a+') as f:
-        tokens = {token.strip() for token in f if token}
+    os.makedirs('Data/Tokens', exist_ok=True)
+    with open('Data/Tokens/bot-tokens.txt', 'a+', encoding='utf-8') as f:
+        f.seek(0)
+        tokens = {token.strip() for token in f if token.strip()}
     for token in tokens:
         yield token
 
 def UserTokens():
-    with open('Data/Tokens/user-tokens.txt', 'a+') as f:
-        tokens = {token.strip() for token in f if token}
+    os.makedirs('Data/Tokens', exist_ok=True)
+    with open('Data/Tokens/user-tokens.txt', 'a+', encoding='utf-8') as f:
+        f.seek(0)
+        tokens = {token.strip() for token in f if token.strip()}
     for token in tokens:
         yield token
 
@@ -286,9 +292,10 @@ def do_tts(message):
     return f
 
 def Dump(ctx):
-    for member in ctx.guild.members:
-        f = open(f'Images/{ctx.guild.id}-Dump.txt', 'a+')
-        f.write(str(member.avatar_url)+'\n')
+    os.makedirs('Images', exist_ok=True)
+    with open(f'Images/{ctx.guild.id}-Dump.txt', 'a+', encoding='utf-8') as f:
+        for member in ctx.guild.members:
+            f.write(str(member.avatar_url)+'\n')
 
 def Nitro():
     code = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
@@ -516,7 +523,7 @@ async def on_message(message):
             return
             
     if 'Someone just dropped' in message.content:
-        if slotbot_sniper == true:
+        if slotbot_sniper == True:
             if message.author.id == 346353957029019648:
                 try:
                     await asyncio.sleep(5)
@@ -563,8 +570,10 @@ async def on_message(message):
             try:
                 note_text = pn.read_note(link)
             except Exception as e:
-                print(e)    
-            with open(f'Privnote/{code}.txt', 'a+') as f:
+                print(e)
+                return
+            os.makedirs('Privnote', exist_ok=True)
+            with open(f'Privnote/{code}.txt', 'a+', encoding='utf-8') as f:
                 print(""
                 f"\n{Fore.CYAN}[{time} - Privnote Sniped]"+Fore.RESET)
                 PrivnoteData(code)
@@ -629,7 +638,7 @@ async def bhelp(ctx, category=None):
     elif str(category).lower() == "text":
         embed = discord.Embed(color=0xFFA500, timestamp=ctx.message.created_at)
         embed.set_image(url="https://cdn.discordapp.com/attachments/784561225458778172/792435183236284416/oRKHqciYdcn4.gif")
-        embed.description = f"\uD83D\uDCB0 `TEXT COMMANDS`\n`> logo` - sends the selfbot logo\n`> snipehistory` - shows a history of deleted messages\n`> clearsnipehistory` - clears snipe history of current channel\n`> snipe` - shows the last deleted message\n`> editsnipe` - shows the last edited message\n`> msgsniper <on/off> ({Execard.msgsniper})` - enables a message sniper for deleted messages in DMs\n`> clear` - sends a large message filled with invisible unicode\n`> del <message>` - sends a message and deletes it instantly\n`> 1337speak <message>` - talk like a hacker\n`> minesweeper` - play a game of minesweeper\n`> spam <amount>` - spams a message\n`> dm <user> <content>` - dms a user a message\n`> reverse <message>` - sends the message but in reverse-order\n`> shrug` - returns ¯\_(ツ)_/¯\n`> lenny` - returns ( ͡° ͜ʖ ͡°)\n`> fliptable` - returns (╯°□°）╯︵ ┻━┻\n`> unflip` - returns ┬─┬ ノ( ゜-゜ノ)\n`> bold <message>` - bolds the message\n`> censor <message>` - censors the message\n`> underline <message>` - underlines the message\n`> italicize <message>` - italicizes the message\n`> strike <message>` - strikethroughs the message\n`> quote <message>` - quotes the message\n`> code <message>` - applies code formatting to the message\n`> purge <amount>` - purges the amount of messages\n`> empty` - sends an empty message\n`> tts <content>` - returns an mp4 file of your content\n`> firstmsg` - shows the first message in the channel history\n`> ascii <message>` - creates an ASCII art of your message\n`> wizz` - makes a prank message about wizzing \n`> 8ball <question>` - returns an 8ball answer\n`> slots` - play the slot machine\n`> everyone` - pings everyone through a link\n`> abc` - cyles through the alphabet\n`> cum` - makes you cum lol?\n`> 9/11` - sends a 9/11 attack\n`> massreact <emoji>` - mass reacts with the specified emoji"
+        embed.description = f"\uD83D\uDCB0 `TEXT COMMANDS`\n`> logo` - sends the selfbot logo\n`> snipehistory` - shows a history of deleted messages\n`> clearsnipehistory` - clears snipe history of current channel\n`> snipe` - shows the last deleted message\n`> editsnipe` - shows the last edited message\n`> msgsniper <on/off> ({Execard.msgsniper})` - enables a message sniper for deleted messages in DMs\n`> clear` - sends a large message filled with invisible unicode\n`> del <message>` - sends a message and deletes it instantly\n`> 1337speak <message>` - talk like a hacker\n`> minesweeper` - play a game of minesweeper\n`> spam <amount>` - spams a message\n`> dm <user> <content>` - dms a user a message\n`> reverse <message>` - sends the message but in reverse-order\n`> shrug` - returns ¯\\_(ツ)_/¯\n`> lenny` - returns ( ͡° ͜ʖ ͡°)\n`> fliptable` - returns (╯°□°）╯︵ ┻━┻\n`> unflip` - returns ┬─┬ ノ( ゜-゜ノ)\n`> bold <message>` - bolds the message\n`> censor <message>` - censors the message\n`> underline <message>` - underlines the message\n`> italicize <message>` - italicizes the message\n`> strike <message>` - strikethroughs the message\n`> quote <message>` - quotes the message\n`> code <message>` - applies code formatting to the message\n`> purge <amount>` - purges the amount of messages\n`> empty` - sends an empty message\n`> tts <content>` - returns an mp4 file of your content\n`> firstmsg` - shows the first message in the channel history\n`> ascii <message>` - creates an ASCII art of your message\n`> wizz` - makes a prank message about wizzing \n`> 8ball <question>` - returns an 8ball answer\n`> slots` - play the slot machine\n`> everyone` - pings everyone through a link\n`> abc` - cyles through the alphabet\n`> cum` - makes you cum lol?\n`> 9/11` - sends a 9/11 attack\n`> massreact <emoji>` - mass reacts with the specified emoji"
         await ctx.send(embed=embed)
     elif str(category).lower() == "image":
         embed = discord.Embed(color=0xFFA500, timestamp=ctx.message.created_at)
@@ -900,7 +909,7 @@ async def bots(ctx):
     for member in ctx.guild.members:
         if member.bot:
             bots.append(
-                str(member.name).replace("`", "\`").replace("*", "\*").replace("_", "\_") + "#" + member.discriminator)
+                str(member.name).replace("`", "\\`").replace("*", "\\*").replace("_", "\\_") + "#" + member.discriminator)
     bottiez = f"**Bots ({len(bots)}):**\n{', '.join(bots)}"
     await ctx.send(bottiez)
 
@@ -2071,9 +2080,9 @@ async def nickall(ctx, nickname):
 @Execard.command()
 async def youtube(ctx, *, search):
     await ctx.message.delete()
-    query_string = parse.urlencode({'search_query': search})
-    html_content = request.urlopen('http://www.youtube.com/results?' + query_string)
-    search_results = re.findall('href=\"\\/watch\\?v=(.{11})', html_content.read().decode())
+    query_string = urllib.parse.urlencode({'search_query': search})
+    html_content = urllib.request.urlopen('http://www.youtube.com/results?' + query_string)
+    search_results = re.findall(r'href="\/watch\?v=(.{11})', html_content.read().decode())
     await ctx.send('https://www.youtube.com/watch?v=' + search_results[0])
 
 
@@ -2761,7 +2770,7 @@ async def yuihug(ctx, user: discord.User = None):
         if Execard.yui_hug_user is None or Execard.yui_hug_channel is None:
             await ctx.send('An impossible error occured, try again later or contact swag')
             return
-        while All.yui_hug_user is not None and Execard.yui_hug_channel is not None:
+        while Execard.yui_hug_user is not None and Execard.yui_hug_channel is not None:
             await Execard.get_channel(Execard.yui_hug_channel).send('yui hug ' + str(Execard.yui_hug_user),
                                                                   delete_after=0.1)
             await asyncio.sleep(60)
